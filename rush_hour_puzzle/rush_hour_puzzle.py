@@ -1,14 +1,18 @@
 # Reference:
 # https://stackoverflow.com/questions/10194482/custom-matplotlib-plot-chess-board-like-table-with-colored-cells
 import numpy as np
-import numpy.typing as npt
+from numpy.typing import ArrayLike
 import matplotlib.pyplot as plt
 from matplotlib import colors
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-from typing import Sequence, Union, Tuple
+from numpy import ndarray
+# from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from typing import Sequence, Union, Callable, Any, List, Deque, Set
 import copy
 import cv2
 import io
+
+
+# import time
 
 
 class Direction:
@@ -19,89 +23,101 @@ class Direction:
 
 
 class Action:
-    def __init__(self, car_idx: int, top_left_cell_row: int, top_left_cell_col: int, car_len: int,
+    def __init__(self, car_idx: int,
+                 top_left_cell_row: int,
+                 top_left_cell_col: int,
+                 car_len: int,
                  move_direction: Union[Direction, int],
                  move_len: int):
-        self.car_idx = car_idx
-        self.top_left_cell_row = top_left_cell_row
-        self.top_left_cell_col = top_left_cell_col
-        self.car_len = car_len
-        self.move_direction = move_direction
-        self.move_len = move_len
+        # What does "top left cell" means here?
+        #  _ _ _ _ _ _
+        # |_|_|_|_|_|_|
+        # |_|_|_|_|_|_|
+        # |_|C|a|r|_|_|
+        # |_|_|_|_|_|_|
+        # |_|_|_|C|_|_|
+        # |_|_|_|a|_|_|
+        # |_|_|_|r|_|_|
+        # The two "C" of the two "Car" are their top_left_cell respectively.
+        self.car_idx: int = car_idx
+        self.top_left_cell_row: int = top_left_cell_row
+        self.top_left_cell_col: int = top_left_cell_col
+        self.car_len: int = car_len
+        self.move_direction: int = move_direction
+        self.move_len: int = move_len
 
 
-class RushHourPuzzleBoard:
-    # -1: background color
-    # 0~17: car colors (max number of car is 18 since min length of a car is 2.)
-    # Reference: https://matplotlib.org/stable/gallery/color/named_colors.html
+class RushHourPuzzle:
+    # We use "idx" to indicate the situation of a grid.
+    # Idx "BACKGROUND_IDX" indicate that grid is empty.
+    # Idx 0 is the car that we have to accomplish solving this puzzle by
+    # move it to the specific position.
     BACKGROUND_IDX = -1
-    BACKGROUND_COLOR = 'lightgray'
-    # Car with index 0 is the car you want to move out the board
-    CAR_COLOR = [
-        'red',
-        'aqua',
-        'yellow',
-        'greenyellow',
-        'orange',
-        'violet',
-        'darkolivegreen',
-        'dodgerblue',
-        'royalblue',
-        'paleturquoise',
-        'darkgoldenrod',
-        'hotpink',
-        'cornflowerblue',
-        'linen',
-        'olive',
-        'turquoise',
-        'violet',
-        'mediumslateblue'
-    ]
 
-    def __init__(self, n_rows: int = 6, n_cols: int = 6):
+    def __init__(self, config: dict):
         # Initialization
-        self.n_rows, self.n_cols = n_rows, n_cols
-        self.board = self.empty_board()
-        self.legal_actions = self.get_legal_actions()
+        self._nrows: int = config['board']['n_rows']
+        self._ncols: int = config['board']['n_cols']
+        self._board: ndarray = self.empty_board()
+        self._actions: List[Action] = self.get_legal_actions()
+        self.BACKGROUND_COLOR: str = config['board']['background_color']
+        self.CAR_COLORS: List[str] = config['board']['car_colors']
+        self._last_action = None  # Indicate what is the last action that lead to this board state
 
-    def empty_board(self) -> np.ndarray:
-        return np.full((self.n_rows, self.n_cols), self.BACKGROUND_IDX)
+    @property
+    def board(self) -> ndarray:
+        return self._board
 
-    def set_board(self, board: Sequence):
+    @board.setter
+    def board(self, board: ArrayLike):
+        self.set_board(board=board)
+
+    @property
+    def actions(self) -> List[Action]:
+        return self._actions
+
+    def set_board(self, board: ArrayLike):
         # Ensure format
         board = np.array(board)
         # Check size
-        n_rows, n_cols = board.shape
-        if n_rows != self.n_rows or n_cols != self.n_cols:
+        _nrows, _ncols = board.shape
+        if _nrows != self._nrows or _ncols != self._ncols:
             raise ValueError(
-                'Board size must be the same as ({},{}) but got ({},{}).'.format(self.n_rows, self.n_cols, n_rows,
-                                                                                 n_cols))
-        # Set
-        self.board = board
+                'Board size must be the same as ({},{}) but got ({},{}).'.format(self._nrows, self._ncols, _nrows,
+                                                                                 _ncols))
+        # Self
+        self._board = board
         # Renew legal actions
-        self.legal_actions = self.get_legal_actions()
+        self._actions = self.get_legal_actions()
 
-    def show_board(self, show_img: bool = True, show_legal_actions=False, return_cv2mat=False, side_length: int = 10,
+    def empty_board(self) -> ndarray:
+        return np.full((self._nrows, self._ncols), self.BACKGROUND_IDX)
+
+    def show_board(self,
+                   show_img: bool = True,
+                   show_actions=True,
+                   return_cv2mat=False,
+                   side_length: int = 10,
                    dpi: int = 80):
         # Reference:
         #     https://stackoverflow.com/questions/34975972/how-can-i-make-a-video-from-array-of-images-in-matplotlib
         # side_length's unit is "inch"
 
         # Set colors
-        cmap = colors.ListedColormap([self.BACKGROUND_COLOR] + self.CAR_COLOR)
-        bounds = [-1.5 + x for x in range(len(self.CAR_COLOR) + 2)]  # [-1.5, -0.5, 0.5, ......, car_max_idx + 0.5]
+        cmap = colors.ListedColormap([self.BACKGROUND_COLOR] + self.CAR_COLORS)
+        bounds = [-1.5 + x for x in range(len(self.CAR_COLORS) + 2)]  # [-1.5, -0.5, 0.5, ......, car_max_idx + 0.5]
         norm = colors.BoundaryNorm(boundaries=bounds, ncolors=cmap.N)
 
         fig = plt.figure(figsize=(side_length, side_length), dpi=dpi)
 
-        plt.imshow(self.board, cmap=cmap, norm=norm)
+        plt.imshow(self._board, cmap=cmap, norm=norm)
 
-        row_labels = range(self.n_rows)
-        col_labels = range(self.n_cols)
-        plt.xticks(range(self.n_cols), col_labels, fontsize=25)
-        plt.yticks(range(self.n_rows), row_labels, fontsize=25)
-        if show_legal_actions:
-            for action in self.legal_actions:
+        row_labels = range(self._nrows)
+        col_labels = range(self._ncols)
+        plt.xticks(range(self._ncols), col_labels, fontsize=25)
+        plt.yticks(range(self._nrows), row_labels, fontsize=25)
+        if show_actions:
+            for action in self._actions:
                 if action.move_direction == Direction.UP:
                     x = action.top_left_cell_col
                     y = action.top_left_cell_row
@@ -154,7 +170,7 @@ class RushHourPuzzleBoard:
             return returns
 
     def show_18_colors(self):
-        if self.n_rows != 6 or self.n_cols != 6:
+        if self._nrows != 6 or self._ncols != 6:
             raise ValueError('You can not show the 18 colors if the board size is not (6,6).')
         # List 18 colors, background color is inserted between each one
         board = np.array(
@@ -184,29 +200,29 @@ class RushHourPuzzleBoard:
                 target_row = top_left_cell_row + i if orientation == 2 else top_left_cell_row
                 target_col = top_left_cell_col + i if orientation == 1 else top_left_cell_col
                 # Check if target outside the board
-                if not 0 <= target_row <= self.n_rows or not 0 <= target_col <= self.n_cols:
+                if not 0 <= target_row <= self._nrows or not 0 <= target_col <= self._ncols:
                     raise ValueError(
                         'The car (index: {}) will occupy the grid ({},{}) which is outside the board of size\
                          ({},{}).'.format(
-                            car_idx, target_row, target_col, self.n_rows, self.n_cols)
+                            car_idx, target_row, target_col, self._nrows, self._ncols)
                     )
                     # Check if already put a car
                 if board[target_row, target_col] != self.BACKGROUND_IDX:
                     raise ValueError(
                         'The car (index: {}) will occupy the grid ({},{}) that there is already a car there.'.format(
-                            car_idx, target_row, target_col, self.n_rows, self.n_cols
+                            car_idx, target_row, target_col, self._nrows, self._ncols
                         ))
                 # Fill it
                 board[target_row, target_col] = car_idx
         self.set_board(board=board)
 
     # Get all legal actions from the current state
-    def get_legal_actions(self):
-        board = self.board
+    def get_legal_actions(self) -> List[Action]:
+        board = self._board
         # From top-left
-        checked_grid = np.full((self.n_rows, self.n_cols), False)  # Value of explored grids are True
+        checked_grid = np.full((self._nrows, self._ncols), False)  # Value of explored grids are True
         height, width = board.shape
-        legal_actions = []
+        _actions = []
         for i in range(height):
             for j in range(width):
                 # Check if explored
@@ -236,7 +252,7 @@ class RushHourPuzzleBoard:
                     else:
                         try_point = [i, j + length] if orientation == 1 else [i + length, j]
                         move_direction = Direction.RIGHT if orientation == 1 else Direction.DOWN
-                    if not (0 <= try_point[0] < self.n_rows) or not (0 <= try_point[1] < self.n_cols):
+                    if not (0 <= try_point[0] < self._nrows) or not (0 <= try_point[1] < self._ncols):
                         continue
                     # See if there are empty grids
                     while board[try_point[0]][try_point[1]] == self.BACKGROUND_IDX:
@@ -247,7 +263,7 @@ class RushHourPuzzleBoard:
                             move_len = abs(try_point[1] - j - length + 1) if orientation == 1 else abs(
                                 try_point[0] - i - length + 1)
                         # Add an action
-                        legal_actions.append(
+                        _actions.append(
                             Action(car_idx=car_idx,
                                    top_left_cell_row=i,
                                    top_left_cell_col=j,
@@ -261,17 +277,17 @@ class RushHourPuzzleBoard:
                         else:
                             try_point[0] += 1
 
-                        if not (0 <= try_point[0] < self.n_rows) or not (0 <= try_point[1] < self.n_cols):
+                        if not (0 <= try_point[0] < self._nrows) or not (0 <= try_point[1] < self._ncols):
                             break
                 # Record those are explored
                 for ii in range(length):
                     iii = i + ii if orientation == 2 else i
                     jjj = j + ii if orientation == 1 else j
                     checked_grid[iii][jjj] = True
-        return legal_actions
+        return _actions
 
     def apply_action(self, action: Action):
-        board = self.board
+        board = self._board
         # Move the number of grids that equals the car length
         for i in range(0, action.car_len):
             # Find the new grid that one grid of the car is going to move to
@@ -296,7 +312,7 @@ class RushHourPuzzleBoard:
                 row = cur_row
                 col = cur_col - action.move_len
             # Check if the target grid outside the board
-            if not (0 <= row < self.n_rows) or not (0 <= col < self.n_cols):
+            if not (0 <= row < self._nrows) or not (0 <= col < self._ncols):
                 raise ValueError('The grid ({},{}) is outside the board. There may be some errors in action part.\
                                  '.format(row, col))
             # Check if there's other car on that grid to ensure the action is valid
@@ -310,112 +326,29 @@ class RushHourPuzzleBoard:
 
         #
         self.set_board(board=board)
+        self._last_action = action
 
-    def is_terminal(self):
+    def is_solved(self):
         # When car (idx=0) arrive (2,4), (2,5)
-        if self.board[2][4] == 0 and self.board[2][5] == 0:
+        if self._board[2][4] == 0 and self._board[2][5] == 0:
             return True
         else:
             return False
 
+    def encode(self) -> str:
+        encoded = ''
+        for i in range(self._nrows):
+            for j in range(self._ncols):
+                encoded += str(self._board[i][j])
+        return encoded
 
-##########################################
-def make_video(name: str, size: Tuple[int, int], cv2mats: Sequence[npt.ArrayLike], fps: int = 1.25):
-    video = cv2.VideoWriter(f'{name}.mp4', cv2.VideoWriter_fourcc(*'mp4v'), fps, size)
-    for cv2mat in cv2mats:
-        video.write(cv2mat)
-    cv2.destroyAllWindows()
-    video.release()
+    @staticmethod
+    def board_exists(boards: Sequence['RushHourPuzzle'], s: 'RushHourPuzzle') -> bool:
+        for node in boards:
+            if np.array_equal(node.board, s.board):
+                return True
+        return False
 
-
-def board_exists(path: Sequence[RushHourPuzzleBoard], s: RushHourPuzzleBoard) -> bool:
-    for node in path:
-        if np.array_equal(node.board, s.board):
-            return True
-    return False
-
-
-def dfs_tree_non_recursive(source_board: RushHourPuzzleBoard):
-    path = []
-    waiting_stack = [source_board]
-    sol_found = False
-    max_path_len = 1000
-    while len(waiting_stack) != 0:
-        s = waiting_stack.pop()
-
-        if not board_exists(path, s):
-            path.append(s)
-        else:
-            continue
-
-        # Check if terminal
-        if s.is_terminal():
-            sol_found = True
-            break
-
-        # Check current length of path
-        if len(path) >= max_path_len:
-            break
-
-        for action in s.legal_actions:
-            new_s = copy.deepcopy(s)
-            new_s.apply_action(action=action)
-            waiting_stack.append(new_s)
-    print('Whether found:', sol_found)
-    if sol_found:
-        return path
-    else:
-        return None
-
-
-a = RushHourPuzzleBoard()
-
-eg_input = '''
-            0 2 3 2 1
-            1 0 0 3 1
-            2 1 3 3 1
-            3 3 1 2 1
-            4 5 0 3 1
-            5 1 0 2 2
-            7 1 2 2 2
-            8 3 3 3 2
-            9 4 4 2 2
-            10 2 5 2 2
-            11 4 5 2 2'''
-
-# aaa = []
-#
-a.transform_car_info_into_board(eg_input)
-# aaa.append(a.show_board(show_legal_actions=True, return_cv2mat=True))
-#
-# a.apply_action(a.legal_actions[0])
-# aaa.append(a.show_board(show_legal_actions=True, return_cv2mat=True))
-# a.apply_action(a.legal_actions[0])
-# aaa.append(a.show_board(show_legal_actions=True, return_cv2mat=True))
-# a.apply_action(a.legal_actions[0])
-# aaa.append(a.show_board(show_legal_actions=True, return_cv2mat=True))
-# a.apply_action(a.legal_actions[0])
-# aaa.append(a.show_board(show_legal_actions=True, return_cv2mat=True))
-# a.apply_action(a.legal_actions[0])
-# aaa.append(a.show_board(show_legal_actions=True, return_cv2mat=True))
-# a.apply_action(a.legal_actions[0])
-# aaa.append(a.show_board(show_legal_actions=True, return_cv2mat=True))
-# a.apply_action(a.legal_actions[0])
-# aaa.append(a.show_board(show_legal_actions=True, return_cv2mat=True))
-# a.apply_action(a.legal_actions[0])
-# aaa.append(a.show_board(show_legal_actions=True, return_cv2mat=True))
-
-
-#
-path_found = dfs_tree_non_recursive(source_board=a)
-if path_found:
-    img_to_be_video = []
-    for state in path_found:
-        img_to_be_video.append(state.show_board(show_legal_actions=True, show_img=False, return_cv2mat=True))
-    make_video('dfs', (img_to_be_video[0].shape[0], img_to_be_video[0].shape[1]), img_to_be_video, fps=2)
-
-# 1. S -> all legal actions
-# 2. S ____> S' after do an action
-
-# TODO: receive car info from stdout "<" symbol
-# Prepare for making a video
+    @staticmethod
+    def board_encoded_exists(boards_encoded: Set[str], s_encoded: str) -> bool:
+        return s_encoded in boards_encoded

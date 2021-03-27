@@ -1,0 +1,35 @@
+board:
+  # Number of rows
+  n_rows: 6
+  # Number of columns
+  n_cols: 6
+
+  # We use "idx" to indicate the situation of a grid.
+  #   Idx 0 is the car that we have to accomplish solving this puzzle by
+  #   move it to the specific position.
+
+  # Define background and each car index's color.
+  #   The string you type must be named color in matplotlib.
+  #   Please refer to this page: https://matplotlib.org/stable/gallery/color/named_colors.html
+  background_color: lightgray
+  # Number of car colors you type below shows how many car you can use in the puzzle.
+  #   The number of car colors must >= 1.
+  car_colors:
+    - red
+    - aqua
+    - yellow
+    - greenyellow
+    - orange
+    - violet
+    - darkolivegreen
+    - dodgerblue
+    - royalblue
+    - paleturquoise
+    - darkgoldenrod
+    - hotpink
+    - cornflowerblue
+    - linen
+    - olive
+    - turquoise
+    - violet
+    - mediumslateblue
