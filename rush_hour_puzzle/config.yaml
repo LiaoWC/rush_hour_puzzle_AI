@@ -22,14 +22,20 @@ board:
     - orange
     - violet
     - darkolivegreen
-    - dodgerblue
+    - brown
     - royalblue
     - paleturquoise
     - darkgoldenrod
     - hotpink
-    - cornflowerblue
+    - indigo
     - linen
     - olive
     - turquoise
     - violet
     - mediumslateblue
+
+search_debug:
+  show_part_info: true # bool
+  n_loop_to_show_part_info: 5000
+  n_visited_to_show_info: 5000 # Show n_visited, cur_node_num_in_container, and explored_list_len
+  show_new_max_depth: true # bool

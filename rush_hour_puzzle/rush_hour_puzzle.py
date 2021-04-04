@@ -6,20 +6,21 @@ import matplotlib.pyplot as plt
 from matplotlib import colors
 from numpy import ndarray
 # from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-from typing import Sequence, Union, Callable, Any, List, Deque, Set
+from typing import Sequence, Union, Callable, Any, List, Deque, Set, NewType
 import copy
 import cv2
 import io
+from sortedcontainers import SortedSet
+import time
 
-
-# import time
+DirectionT = NewType('DirectionT', int)
 
 
 class Direction:
-    UP = 0
-    RIGHT = 1
-    DOWN = 2
-    LEFT = 3
+    UP: DirectionT = 0
+    RIGHT: DirectionT = 1
+    DOWN: DirectionT = 2
+    LEFT: DirectionT = 3
 
 
 class Action:
@@ -27,7 +28,7 @@ class Action:
                  top_left_cell_row: int,
                  top_left_cell_col: int,
                  car_len: int,
-                 move_direction: Union[Direction, int],
+                 move_direction: Union[DirectionT, int],
                  move_len: int):
         # What does "top left cell" means here?
         #  _ _ _ _ _ _
@@ -53,16 +54,29 @@ class RushHourPuzzle:
     # Idx 0 is the car that we have to accomplish solving this puzzle by
     # move it to the specific position.
     BACKGROUND_IDX = -1
+    BACKGROUND_COLOR: Union[str, Any] = None
+    CAR_COLORS: Union[List[str], Any] = None
 
     def __init__(self, config: dict):
+        # Initialize static vars
+        if not RushHourPuzzle.BACKGROUND_COLOR:
+            RushHourPuzzle.BACKGROUND_COLOR = config['board']['background_color']
+            RushHourPuzzle.CAR_COLORS = config['board']['car_colors']
+
         # Initialization
         self._nrows: int = config['board']['n_rows']
         self._ncols: int = config['board']['n_cols']
         self._board: ndarray = self.empty_board()
         self._actions: List[Action] = self.get_legal_actions()
-        self.BACKGROUND_COLOR: str = config['board']['background_color']
-        self.CAR_COLORS: List[str] = config['board']['car_colors']
-        self._last_action = None  # Indicate what is the last action that lead to this board state
+        self._last_action: Union[Action, None] = None  # Indicate what is the last action that lead to this board state
+
+    @property
+    def nrows(self) -> int:
+        return self._nrows
+
+    @property
+    def ncols(self) -> int:
+        return self._ncols
 
     @property
     def board(self) -> ndarray:
@@ -73,10 +87,14 @@ class RushHourPuzzle:
         self.set_board(board=board)
 
     @property
+    def last_action(self) -> Union["Action", None]:
+        return self._last_action
+
+    @property
     def actions(self) -> List[Action]:
         return self._actions
 
-    def set_board(self, board: ArrayLike):
+    def set_board(self, board: ArrayLike, renew_actions: bool = True):
         # Ensure format
         board = np.array(board)
         # Check size
@@ -88,7 +106,10 @@ class RushHourPuzzle:
         # Self
         self._board = board
         # Renew legal actions
-        self._actions = self.get_legal_actions()
+        if renew_actions:
+            # start_time = time.time()
+            self._actions = self.get_legal_actions()
+            # print('{:.8f}'.format(time.time() - start_time))
 
     def empty_board(self) -> ndarray:
         return np.full((self._nrows, self._ncols), self.BACKGROUND_IDX)
@@ -140,6 +161,8 @@ class RushHourPuzzle:
                     dy = 0
                 plt.arrow(x=x, y=y, dx=dx, dy=dy, length_includes_head=True, head_width=0.25, head_length=0.3
                           )
+
+
 
         returns = []
         if return_cv2mat:
@@ -272,10 +295,16 @@ class RushHourPuzzle:
                                    move_len=move_len
                                    ))
                         # Move more
-                        if orientation == 1:
-                            try_point[1] += 1
+                        if direction == 'Up/Left':
+                            if orientation == 1:
+                                try_point[1] -= 1
+                            else:
+                                try_point[0] -= 1
                         else:
-                            try_point[0] += 1
+                            if orientation == 1:
+                                try_point[1] += 1
+                            else:
+                                try_point[0] += 1
 
                         if not (0 <= try_point[0] < self._nrows) or not (0 <= try_point[1] < self._ncols):
                             break
@@ -286,7 +315,8 @@ class RushHourPuzzle:
                     checked_grid[iii][jjj] = True
         return _actions
 
-    def apply_action(self, action: Action):
+    def apply_action(self, action: Action,
+                     return_board_and_not_renew: bool = False):
         board = self._board
         # Move the number of grids that equals the car length
         for i in range(0, action.car_len):
@@ -325,7 +355,7 @@ class RushHourPuzzle:
             board[cur_row][cur_col] = self.BACKGROUND_IDX
 
         #
-        self.set_board(board=board)
+        self.set_board(board=board, renew_actions=True)
         self._last_action = action
 
     def is_solved(self):
@@ -339,7 +369,7 @@ class RushHourPuzzle:
         encoded = ''
         for i in range(self._nrows):
             for j in range(self._ncols):
-                encoded += str(self._board[i][j])
+                encoded += str(self._board[i][j]) + " "
         return encoded
 
     @staticmethod
@@ -350,5 +380,5 @@ class RushHourPuzzle:
         return False
 
     @staticmethod
-    def board_encoded_exists(boards_encoded: Set[str], s_encoded: str) -> bool:
+    def board_encoded_exists(boards_encoded: SortedSet, s_encoded: str) -> bool:
         return s_encoded in boards_encoded
