@@ -2,7 +2,7 @@
 
 
 <!--img src="Rush%20Hour%20Puzzle%20Search%20Algorithms%2064c5b59631d144b3af53e7de2dfb18ae/myplot.png" alt="rush_hour_puzzle" style="display: block;  margin-left:auto; margin-right:auto; max-width: 30px;"-->  
-<img src="Rush%20Hour%20Puzzle%20Search%20Algorithms%2064c5b59631d144b3af53e7de2dfb18ae/myplot.png" alt="rush_hour_puzzle" height="150px" width="150px">  
+<img src="Rush%20Hour%20Puzzle%20Search%20Algorithms%2064c5b59631d144b3af53e7de2dfb18ae/myplot.png" alt="rush_hour_puzzle"  width="200">  
 
 ## Problem Setting[1]
 
@@ -71,7 +71,7 @@ In the tree search version, I restrict the number of expanded nodes to **1,000,0
 
 In this heuristic function, I use backward method to calculate the total number of how many cars must be moved towards which direction if I want to move a blocking car to let red car pass through. Please refer to the codes if you're interesting its implementing details. The below is a simple example and the following is the simple description:
 
-![Rush%20Hour%20Puzzle%20Search%20Algorithms%2064c5b59631d144b3af53e7de2dfb18ae/Untitled_Design.png](Rush%20Hour%20Puzzle%20Search%20Algorithms%2064c5b59631d144b3af53e7de2dfb18ae/Untitled_Design.png =250x250)
+<img alt="" src="Rush%20Hour%20Puzzle%20Search%20Algorithms%2064c5b59631d144b3af53e7de2dfb18ae/Untitled_Design.png" width="250">
 
 1. Find all blocking car, do the following steps to each of them. (Purple car)
 2. Find positions to move this car to let red pass through. (Purple car should move down.)
