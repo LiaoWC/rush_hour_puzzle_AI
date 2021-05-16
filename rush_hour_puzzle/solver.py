@@ -10,6 +10,8 @@ import cv2
 from typing import Tuple, Sequence, List
 from numpy.typing import ArrayLike
 from .heuristic import HeuristicFunc
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 def make_path_video(name: str, size: Tuple[int, int], cv2mats: Sequence[ArrayLike], fps: int = 4):
@@ -44,15 +46,16 @@ if __name__ == '__main__':
         """
     heuristic_func_help = 'Pick heuristic function. ("None" or "none" for not using.) Available heuristic functions: {}'.format(
         ', '.join(get_heuristic_func_list())) + '.'
+    make_video_help = 'Choose whether making an video of path if finding the solution. ' \
+                      'Type "true", "yes", "t", or "y" to choose making an video.'
     parser.add_argument('-a', '--algorithm', required=True, help=algorithm_help)
     parser.add_argument('-v', '--version', required=True, help='Choose tree version or graph version.')
     parser.add_argument('-f', '--input-file', help='Input board.', required=True)
     parser.add_argument('-d', '--max-depth', help='Max depth.', type=int, required=True)
     parser.add_argument('-e', '--max-explored', help='Max number of nodes explored.', type=int, required=True)
+    parser.add_argument('-p', '--max-expanded', help='Max number of nodes expanded.', type=int, required=True)
     parser.add_argument('-u', '--heuristic-func', help=heuristic_func_help, required=True)
-    parser.add_argument('-m', '--make-video',
-                        help='Choose whether making an video of path if finding the solution. Type "true", "yes", "t", or "y" to choose making an video.',
-                        required=True)
+    parser.add_argument('-m', '--make-video', help=make_video_help, required=True)
     args = parser.parse_args()
 
     # Load config
@@ -93,6 +96,9 @@ if __name__ == '__main__':
     # Choose max number of explored nodes
     max_n_explored = args.max_explored
 
+    # Choose max number of expanded nodes
+    max_n_expanded = args.max_expanded
+
     # Choose whether make an video if finding the solution
     if args.make_video in ['true', 't', 'yes', 'y']:
         make_video = True
@@ -119,11 +125,13 @@ if __name__ == '__main__':
 
     start_time = time.time()
 
-    make_video = True
-    algorithm = Algorithm.A_STAR
-    max_depth = 99999
-    version = SearchVersion.GRAPH
-    heuristic_func = HeuristicFunc.n_directly_block
+    # Manual-control-area
+    # make_video = True
+    # algorithm = Algorithm.A_STAR
+    # max_depth = 99999
+    # version = SearchVersion.GRAPH
+    # heuristic_func = HeuristicFunc.n_directly_block
+    # heuristic_func = HeuristicFunc.h2
 
     #
     search_engine = SearchEngine(config=config,
@@ -132,20 +140,17 @@ if __name__ == '__main__':
                                  source_puzzle=puzzle,
                                  heuristic_fun=heuristic_func,
                                  max_depth=max_depth,
-                                 max_n_explored=max_n_explored)
+                                 max_n_explored=max_n_explored,
+                                 max_n_expanded=max_n_expanded)
 
     search_stats: SearchStats = search_engine.run()
 
-    # stat: SearchStats = search(config=config,
-    #                            algorithm='BFS',
-    #                            version='graph',
-    #                            source_board=a,
-    #                            heuristic_fun=None,
-    #                            max_depth=1000,
-    #                            max_n_explored=8000000)
-    # path_found = search_with_heuristic(source_board=a, max_depth=20, max_n_visited=100000, heuristic_fun=jjj)
-    #
     print("--- {:.3f} seconds for searching---".format(time.time() - start_time))
+
+    output_prefix = args.input_file + '_' + algorithm + '_' + version + '_' + (heuristic_func.__name__ if heuristic_func
+                                                                               else '')
+    statistics_description = ''
+    solution = '=== Solution ===\n' + 'car_index, new_row, new_col\n'
 
     print('Whether found solution:', search_stats.sol_found)
     if search_stats.sol_found:
@@ -153,8 +158,6 @@ if __name__ == '__main__':
         path = search_stats.path
 
         if len(path) > 0:
-            print('=== Solution ===')
-            print('car_index, new_row, new_col')
             for state in path[1:]:
                 move_direction = state.last_action.move_direction
                 move_len = state.last_action.move_len
@@ -173,8 +176,8 @@ if __name__ == '__main__':
                 else:
                     raise ValueError('Invalid move_direction: {}'.format(move_direction))
                 #
-                print(car_idx, new_row, new_col)
-
+                solution += '{}, {}, {}\n'.format(car_idx, new_row, new_col)
+        print(solution)
         print('Output solution done!')
 
         if make_video:
@@ -182,18 +185,47 @@ if __name__ == '__main__':
             img_to_be_video = []
             for state in path:
                 img_to_be_video.append(state.show_board(show_actions=True, show_img=False, return_cv2mat=True))
-            print('--- {} seconds for preparing for the video ---'.format(time.time() - start_time))
-            video_name = input('Video name:')
-            make_path_video(video_name, (img_to_be_video[0].shape[0], img_to_be_video[0].shape[1]), img_to_be_video,
-                            fps=4)
+            # video_name = input('Video name:')
+            make_path_video(output_prefix, (img_to_be_video[0].shape[0], img_to_be_video[0].shape[1]), img_to_be_video,
+                            fps=3)
+            print('--- {} seconds for making an video ---'.format(time.time() - start_time))
 
-    print('Number of nodes expanded:', search_stats.n_expand)
-    print('Length of explored:', len(search_stats.explored))
+        statistics_description += 'Depth of the solution path: {}\n'.format(len(path) - 1)
+    statistics_description += 'Number of nodes expanded: {}\n'.format(search_stats.n_expand)
+    statistics_description += 'Length of explored: {}\n'.format(len(search_stats.explored))
+    statistics_description += 'Final number of nodes in container: {}\n'.format(search_stats.node_num_record[-1])
+    statistics_description += 'Max number of nodes in container: {}\n'.format(max(search_stats.node_num_record))
+    statistics_description += 'Mean number of nodes in container: {}\n'.format(
+        sum(search_stats.node_num_record) / len(search_stats.node_num_record))
 
-    print('Done!')
+    with open(output_prefix + '_statistics.txt', 'w+') as file:
+        file.write(statistics_description)
+        if search_stats.sol_found:
+            file.write('\n')
+            file.write(solution)
+    plt.clf()
+    print('Output statistics as a text file done!')
 
-    # 1. S -> all legal actions
-    # 2. S ____> S' after do an action
+    plt.figure(figsize=(30, 20), dpi=60)
+    # plt.figure(figsize=(90, 60), dpi=120)
+    # plt.plot(np.arange(len(search_stats.node_num_record[200:210])) + 1, search_stats.node_num_record[200:210])
+    plt.bar(np.arange(len(search_stats.node_num_record)) + 1, search_stats.node_num_record)
+    plt.xticks(fontsize=45)
+    plt.yticks(fontsize=45)
+    plt.xlabel('Number of explored nodes', fontsize=60)
+    plt.ylabel('Number of nodes in the container', fontsize=60)
+    plt.savefig(output_prefix + '_nic.png')
+    print('Output n_node_in_container graph done!')
 
-    # TODO: receive car info from stdout "<" symbol
-    # Prepare for making a video
+    plt.figure(figsize=(30, 20), dpi=60)
+    plt.bar(np.arange(len(search_stats.explored_encoded_set_len)) + 1, search_stats.explored_encoded_set_len)
+    plt.xticks(fontsize=45)
+    plt.yticks(fontsize=45)
+    plt.xlabel('Number of explored nodes', fontsize=60)
+    plt.ylabel('Number of distinct explored states', fontsize=60)
+    plt.savefig(output_prefix + '_des.png')
+    plt.clf()
+    print('Output n_distinct_explored_states graph done!')
+
+    print()
+    print(statistics_description)

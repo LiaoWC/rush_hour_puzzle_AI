@@ -1,0 +1,37 @@
+Depth of the solution path: 28
+Number of nodes expanded: 398548
+Length of explored: 398503
+Final number of nodes in container: 72
+Max number of nodes in container: 140
+Mean number of nodes in container: 58.039251900236636
+
+=== Solution ===
+car_index, new_row, new_col
+5, 4, 0
+2, 3, 0
+10, 1, 5
+11, 3, 5
+3, 5, 4
+8, 4, 3
+0, 2, 2
+6, 1, 1
+1, 0, 0
+10, 0, 5
+9, 0, 4
+2, 3, 2
+6, 4, 1
+2, 3, 0
+0, 2, 1
+8, 0, 3
+3, 5, 3
+11, 4, 5
+2, 3, 3
+7, 3, 2
+5, 3, 0
+0, 2, 2
+6, 1, 1
+3, 5, 0
+7, 4, 2
+2, 3, 1
+9, 3, 4
+0, 2, 4

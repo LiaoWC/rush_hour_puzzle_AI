@@ -280,8 +280,19 @@ def move_car(rhp: RushHourPuzzle,
              car_len: int,
              move_len: int,
              expected_sets: List[Set[str]]) -> List[Set[str]]:
+    # if direction == Direction.UP:
+    #     ddd = 'up'
+    # elif direction == Direction.RIGHT:
+    #     ddd = 'right'
+    # elif direction == Direction.DOWN:
+    #     ddd = 'down'
+    # else:
+    #     ddd = 'left'
+    # print('Car_idx {} at ({},{}) with car_len {} moves towards {}, move_len = {}.'.format(
+    #     car_idx, top_left_cell_row, top_left_cell_col, car_len, ddd, move_len
+    # ))
     hello = random.randint(1, 9999999)
-    print(hello, 'GET:', expected_sets)
+    # print(hello, 'GET:', expected_sets)
     # Add to set
     encoded = encode_car_idx_move_direction(car_idx=car_idx, move_direction=direction)
     all_repeated_so_far = True
@@ -312,7 +323,7 @@ def move_car(rhp: RushHourPuzzle,
         #
         car_moving = touch_car(rhp=rhp, touch_direction=direction, touch_row=touch_row, touch_col=touch_col)
         #
-        print('**********', len(car_moving))
+        # print('**********', len(car_moving))
         for data in car_moving:
             ret = move_car(rhp=rhp,
                            car_idx=data[0],
@@ -323,14 +334,17 @@ def move_car(rhp: RushHourPuzzle,
                            move_len=data[4],
                            expected_sets=copy.deepcopy(expected_sets))
             all_sets += ret
-    rtn = all_sets if len(all_sets) > 0 else expected_sets
-    print(hello, 'RETURN:', rtn)
-    return rtn
+        # print(hello, 'ALLSETS', all_sets)
+        expected_sets = copy.deepcopy(all_sets) if len(all_sets) > 0 else expected_sets
+        all_sets = []
+
+    # print(hello, 'RETURN:', expected_sets)
+    return expected_sets
 
 
 class HeuristicFunc:
     @staticmethod
-    def n_directly_block(rhp: RushHourPuzzle) -> float:
+    def n_block(rhp: RushHourPuzzle) -> float:
         board = rhp.board
         num_of_not_empty_not_red_car = 0
         for i in range(6):
@@ -343,25 +357,30 @@ class HeuristicFunc:
     @staticmethod
     def h2(rhp: RushHourPuzzle) -> float:
         ret = find_all_blocking_cars_and_its_suitable_move(rhp=rhp)
-        print(ret)
+        # print(ret)
 
         expected_sets: List[Set[str]] = [set()]
-        result_sets: List[Set[str]] = []
         for item in ret:
             car_idx, top_left_cell_row, top_left_cell_col, car_len, suitable_moves = item
+            all_sets = []
             for move in suitable_moves:
                 direction, move_len = move
-                result_sets += move_car(rhp=rhp,
-                                        car_idx=car_idx,
-                                        top_left_cell_row=top_left_cell_row,
-                                        top_left_cell_col=top_left_cell_col,
-                                        direction=direction,
-                                        car_len=car_len,
-                                        move_len=move_len,
-                                        expected_sets=expected_sets)
-        print(result_sets)
+                all_sets += move_car(rhp=rhp,
+                                     car_idx=car_idx,
+                                     top_left_cell_row=top_left_cell_row,
+                                     top_left_cell_col=top_left_cell_col,
+                                     direction=direction,
+                                     car_len=car_len,
+                                     move_len=move_len,
+                                     expected_sets=copy.deepcopy(expected_sets))
+            expected_sets = copy.deepcopy(all_sets)
+        # print(expected_sets)
         # TODO:
-        return float(min([len(result_set) for result_set in result_sets]))
+        mylist = [len(result_set) for result_set in expected_sets]
+        if len(mylist) > 0:
+            return float(min(mylist))
+        else:
+            return 0
 
 
 if __name__ == '__main__':
@@ -372,15 +391,18 @@ if __name__ == '__main__':
 
     eg_input = '''
 0 2 1 2 1
-1 0 1 2 1
-2 3 3 3 1
-3 5 2 3 1
-4 0 0 3 2
-5 3 2 2 2
-6 0 3 3 2
-7 4 5 2 2
+1 0 3 3 1
+2 3 1 3 1
+3 5 3 2 1
+4 1 0 2 2
+5 3 0 2 2
+6 0 1 2 2
+7 4 2 2 2
+8 1 3 2 2
+9 1 4 3 2
+10 2 5 2 2
+11 4 5 2 2
 '''
     puzzle.transform_car_info_into_board(eg_input)
     puzzle.show_board()
-
     print(HeuristicFunc.h2(puzzle))

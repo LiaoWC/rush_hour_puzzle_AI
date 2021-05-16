@@ -1,0 +1,3 @@
+Number of nodes expanded: 100000
+Length of explored: 13301
+Final number of nodes in container: 86691

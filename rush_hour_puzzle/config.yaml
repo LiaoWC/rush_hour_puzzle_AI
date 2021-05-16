@@ -24,7 +24,7 @@ board:
     - darkolivegreen
     - brown
     - royalblue
-    - paleturquoise
+    - purple
     - darkgoldenrod
     - hotpink
     - indigo
@@ -35,7 +35,7 @@ board:
     - mediumslateblue
 
 search_debug:
-  show_part_info: true # bool
+  show_part_info: false # bool
   n_loop_to_show_part_info: 5000
-  n_visited_to_show_info: 5000 # Show n_visited, cur_node_num_in_container, and explored_list_len
+  n_visited_to_show_info: 10000 # Show n_visited, cur_node_num_in_container, and explored_list_len
   show_new_max_depth: true # bool

@@ -162,8 +162,6 @@ class RushHourPuzzle:
                 plt.arrow(x=x, y=y, dx=dx, dy=dy, length_includes_head=True, head_width=0.25, head_length=0.3
                           )
 
-
-
         returns = []
         if return_cv2mat:
             io_buf = io.BytesIO()
@@ -365,11 +363,17 @@ class RushHourPuzzle:
         else:
             return False
 
-    def encode(self) -> str:
+    def encode(self, mark_depth: bool = False, depth: int = -1) -> str:
+        if mark_depth and depth < 0:
+            raise ValueError('You should provide depth if you want to mark depth.')
+        if mark_depth:
+            encoded = '{}'.format(depth)
+        else:
+            encoded = ''
         encoded = ''
         for i in range(self._nrows):
             for j in range(self._ncols):
-                encoded += str(self._board[i][j]) + " "
+                encoded += " " + str(self._board[i][j])
         return encoded
 
     @staticmethod
