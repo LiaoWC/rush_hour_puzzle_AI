@@ -1,7 +1,8 @@
 # Rush Hour Puzzle Search Algorithms
 
+<img src="Rush%20Hour%20Puzzle%20Search%20Algorithms%2064c5b59631d144b3af53e7de2dfb18ae/myplot.png" alt="rush_hour_puzzle" height="50" width="50">  
 
-# Problem Setting[1]
+## Problem Setting[1]
 
 We will use a standard 6x6 board with a number of cars. The cells are identified using the
 (row,column) coordinates, with (0,0) at the top-left corner. With the only exit at the right side of row 2 (3rd
@@ -18,20 +19,18 @@ new_column>. You can output your solution in plain text.
 Heuristics: A common heuristic function for this puzzle is the "blocking heuristic", that is, the number of cars
 directly blocking the way of the red car to the exit. Its value for the example board above is one.
 
-# Experiments
-
-<img src="Rush%20Hour%20Puzzle%20Search%20Algorithms%2064c5b59631d144b3af53e7de2dfb18ae/myplot.png" alt="rush_hour_puzzle" height="50" width="50">  
+## Experiments
 
 - Algorithms: `BFS`, `DFS`, `IDS`, `A*`, and `IDA*`. Each has `graph` & `tree` search versions.
 - Heuristic functions: `blocking cars` & `h2`. ("block cars" is the one provided in the assignment spec. "h2" is designed by me and will be introduced later.)
 - The below experiments all use `L26.txt` as input puzzle.
 - Note that due to layout restrictions, the fonts in the graphs may be too small, but you can zoom in the graphs to get better experience.
 
-## Graph Search Version (All find a solution successfully.)
+### Graph Search Version (All find a solution successfully.)
 
 ![method_result_table](Rush%20Hour%20Puzzle%20Search%20Algorithms%2064c5b59631d144b3af53e7de2dfb18ae/table1.png)
 
-### How the Number of Nodes Stored in the Container Changes with the Number of Explored
+#### How the Number of Nodes Stored in the Container Changes with the Number of Explored
 
 ![](Rush%20Hour%20Puzzle%20Search%20Algorithms%2064c5b59631d144b3af53e7de2dfb18ae/12.png)
 ![](Rush%20Hour%20Puzzle%20Search%20Algorithms%2064c5b59631d144b3af53e7de2dfb18ae/11.png)
@@ -39,7 +38,7 @@ directly blocking the way of the red car to the exit. Its value for the example 
 
 Although `IDS` takes much more time than `DFS`, its **space use** is significantly **smaller** than `DFS`'s. Max number of nodes in `IDS`'s container is 140, which is much lower than 2560 in `DFS`.
 
-### Why the Size of Explored Set Changes with the Number of Explored Nodes in IDS is very large?
+#### Why the Size of Explored Set Changes with the Number of Explored Nodes in IDS is very large?
 
 Thanks for 彭敍溶's suggestion, he let me know that to get an **optimal** solution in IDS, I should also keep **depth** information in the explored set to prevent the following situation:
 
@@ -52,21 +51,21 @@ IDS Comparison(All find a solution successfully.)
 
 Therefore, iterative-deepening without keeping depth may be a compromise version between DFS and IDS because its time and space use are between those two.
 
-### Evaluation
+#### Evaluation
 
 - Number of expanded nodes:
 
-     $A^{*}_{h2} <  A^{*}_{blocking cars} < DFS < BFS <  IDA^{*}_{h2} < IDA^{*}_{blocking cars} < IDS$
+    ![](Rush%20Hour%20Puzzle%20Search%20Algorithms%2064c5b59631d144b3af53e7de2dfb18ae/eq1.png)
 
 - Time used:
 
-     $A^{*}_{h2} <  A^{*}_{blocking cars} < DFS < BFS <  IDA^{*}_{blocking cars} <    IDS < IDA^{*}_{h2}$
+    ![](Rush%20Hour%20Puzzle%20Search%20Algorithms%2064c5b59631d144b3af53e7de2dfb18ae/eq2.png)
 
-## Tree search Version
+### Tree search Version
 
 In the tree search version, I restrict the number of expanded nodes to **1,000,000**, since enormous number of nodes will be expanded and cause running out of computer's memory. The experiment result is that **all** combinations **fail** to find the solution in the restriction of only 1,000,000 expanded nodes. (Tested algorithms: DFS, BFS, IDS, and A*, IDA* with two kinds of heuristic functions.)
 
-# Design of Heuristic Function (`h2`)
+## Design of Heuristic Function (`h2`)
 
 ---
 
@@ -81,15 +80,15 @@ In this heuristic function, I use backward method to calculate the total number 
 
 In this example, total need-move is 5 (those five arrows in the image). This heuristic function gives this state a value: 5.
 
-### Evaluation of h2
+#### Evaluation of h2
 
 Speed: It's sometimes faster and sometimes slower than `blocking cars`. Heuristic function `h2`  in `IDA*` has fewer expanded nodes but takes more time than `blocking cars`. It may because calculate `h2`  function takes more time than that of `blocking cars`.
 
 Space: It takes more space to stored the nodes in the container.
 
-# Discussing
+## Discussing
 
-### Why are tree search version algorithms difficult to find a solution?
+#### Why are tree search version algorithms difficult to find a solution?
 
 If there are any **repeated** states, an infinitive loop may occur. Thus, depth-first search may not find a solution forever. As for bread-first algorithms, they can find a solution theoretically, but it takes lots of time to deal with repeated states.
 
@@ -102,11 +101,11 @@ Besides time use, tree search take lots of space, too. The two graphs right show
 
 ![](Rush%20Hour%20Puzzle%20Search%20Algorithms%2064c5b59631d144b3af53e7de2dfb18ae/15.png)
 
-### How to implement explored set & is it worth it?
+#### How to implement explored set & is it worth it?
 
 Hash table is good when the number of elements is small but we cannot promise it won't collision. Another data structure like red-black tree is also suitable. The insertion and finding existence take O(log n) time.
 
 Use explored set is a wise choice in this game since there may be some repeated states and the branching factor is large. But, in some cases (like the IDS problem mentioned above), the space for explored set may be larger than the space for storing nodes in container.
 
-# Reference and Source
+## Reference and Source
 1. The L26.txt is from course "AI Capstone" in NYCU taught by Tsaipei Wang. Problem setting and some rules are from this course homework project's spec.
